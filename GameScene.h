@@ -7,6 +7,7 @@
 //
 
 #import <SpriteKit/SpriteKit.h>
+#import "SKAnimals.h"
 
 static NSString * const sunNode = @"movable";
 
@@ -17,6 +18,10 @@ static NSString * const sunNode = @"movable";
 @property (strong ,nonatomic) NSMutableArray *animalArray;
 
 @property (strong, nonatomic) NSMutableArray *menuArray;
+
+@property (strong, nonatomic) UILabel *temperatureLabel;
+
+@property float temperature;
 
 @property BOOL isMenu;
 

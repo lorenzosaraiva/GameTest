@@ -8,28 +8,61 @@
 
 #import "GameScene.h"
 
-static const uint32_t animalCategory = 0x1 << 0;
-//static const uint32_t cloudCategory = 0x1 << 1;
+
 
 @implementation GameScene
 
 
 -(void)didMoveToView:(SKView *)view {
-    /* Setup your scene here */
+    
     self.isMenu = false;
+    self.temperature = 27;
     SKSpriteNode *background = [SKSpriteNode spriteNodeWithImageNamed:@"i.jpg"];
     background.position = CGPointMake(CGRectGetMidX(self.frame),CGRectGetMidY(self.frame));
     self.animalArray = [[NSMutableArray alloc]init];
     self.menuArray = [[NSMutableArray alloc]init];
     self.sun = [SKSpriteNode spriteNodeWithImageNamed:@"sun.jpg"];
     self.sun.position = CGPointMake(170, 550);
-    self.physicsWorld.contactDelegate = self;
-    self.physicsWorld.gravity = CGVectorMake(0, 0);
     [self addChild:background];
     [self addChild:self.sun];
+    
+    
+    // configura os gesture recognizer
+    
+    UISwipeGestureRecognizer *swipeLeftRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanFrom:)];
+    swipeLeftRecognizer.direction = UISwipeGestureRecognizerDirectionLeft;
+    UISwipeGestureRecognizer *swipeRightRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanFrom:)];
+    swipeLeftRecognizer.direction = UISwipeGestureRecognizerDirectionLeft;
+    swipeRightRecognizer.direction = UISwipeGestureRecognizerDirectionRight;
+    [self.view addGestureRecognizer:swipeRightRecognizer];
+    [self.view addGestureRecognizer:swipeLeftRecognizer];
+    
+    // mostra o termometro
+    
+    self.temperatureLabel = [[UILabel alloc]initWithFrame:CGRectMake(self.view.frame.size.width - 50, 0, 50, 50)];
+    self.temperatureLabel.text = [NSString stringWithFormat:@"%.f",self.temperature];
+    [self.view addSubview:self.temperatureLabel];
+    
 }
 
-
+- (void)handlePanFrom:(UIPanGestureRecognizer *)recognizer {
+    
+    CGPoint touchLocation = [recognizer locationInView:recognizer.view];
+    
+    touchLocation = [self convertPointFromView:touchLocation];
+    
+    if ([self.sun containsPoint:touchLocation]){
+        if ([(UISwipeGestureRecognizer*)recognizer direction] == UISwipeGestureRecognizerDirectionLeft){
+            self.sun.size = CGSizeMake(self.sun.frame.size.width * 0.8f, self.sun.frame.size.height * 0.8f);
+            self.temperature--;
+        }
+        else if ([(UISwipeGestureRecognizer*)recognizer direction] == UISwipeGestureRecognizerDirectionRight ){
+            self.sun.size = CGSizeMake(self.sun.frame.size.width * 1.2f, self.sun.frame.size.height * 1.2f);
+            self.temperature++;
+        }
+        self.temperatureLabel.text = [NSString stringWithFormat:@"%.f",self.temperature];
+    }
+}
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
     
@@ -40,14 +73,15 @@ static const uint32_t animalCategory = 0x1 << 0;
     // controla o sol
     
     if ([self.sun containsPoint:positionInScene]){
-        [self sunResize];
+//        [self sunResize];
         return;
     }
     
     // adiciona o elemento correto do pop-up menu
     
     for (int i = 0; i < self.menuArray.count; i++){
-        SKSpriteNode *temp = self.menuArray[i];
+//        if ([self.menuArray objectAtIndex:i] isKindOfClass: [SKAnimals class])
+        SKAnimals *temp = self.menuArray[i];
         if ([temp containsPoint:positionInScene]){
             [self.menuArray removeObject:temp];
             [self removeChildrenInArray:self.menuArray];
@@ -61,7 +95,7 @@ static const uint32_t animalCategory = 0x1 << 0;
     // remove o elemento clicado
     
     for (int i = 0; i < self.animalArray.count; i++){
-        SKSpriteNode *temp = self.animalArray[i];
+        SKAnimals *temp = self.animalArray[i];
         if ([temp containsPoint:positionInScene]){
             [temp removeFromParent];
             return;
@@ -80,7 +114,8 @@ static const uint32_t animalCategory = 0x1 << 0;
     // cria o menu
     
     SKSpriteNode *nuvem  = [SKSpriteNode spriteNodeWithImageNamed:@"nuvem.png"];
-    SKSpriteNode *animal = [SKSpriteNode spriteNodeWithImageNamed:@"animal.png"];
+    SKAnimals *animal = [SKAnimals spriteNodeWithImageNamed:@"animal.png"];
+    animal.strenght = arc4random()%10;
     nuvem.position = CGPointMake(positionInScene.x, positionInScene.y + 20);
     animal.position = CGPointMake(positionInScene.x, positionInScene.y - 20);
     [self.menuArray addObject:nuvem];
@@ -101,6 +136,8 @@ static const uint32_t animalCategory = 0x1 << 0;
 -(void)update:(CFTimeInterval)currentTime {
     
     for (int i = 0; i < self.animalArray.count; i++){
+        
+        // movimento
         int a = arc4random()%20;
         int b = arc4random()%20;
         int c = arc4random()%2;
@@ -111,18 +148,40 @@ static const uint32_t animalCategory = 0x1 << 0;
             b = -b;
         a = a/10;
         b = b/10;
-        SKSpriteNode *temp = self.animalArray[i];
+        SKAnimals *temp = self.animalArray[i];
         temp.position = CGPointMake(temp.position.x + a, temp.position.y + b);
         
+        //checagem de temperatura
+        
+        if (self.temperature > 33){
+            int a = arc4random()%(int)self.temperature;
+            if (a > 32){
+                [self.animalArray removeObject:temp];
+                [temp removeFromParent];
+            }
+        }
+        
+        
         for (int j = 0; j< self.animalArray.count; j++){
+            SKSpriteNode *temp2 =self.animalArray[j];
             if (j == i)
                 continue;
-            SKSpriteNode *temp2 =self.animalArray[j];
+            
                 Boolean viewsOverlap = CGRectIntersectsRect(temp.frame, temp2.frame);
                 if (viewsOverlap){
+                    if ([(SKAnimals*)temp strenght] > [(SKAnimals*)temp2 strenght]){
                     [temp2 removeFromParent];
                     [self.animalArray removeObject:temp2];
-                    break;
+                        NSLog(@"Foi removido o animal de forca %d e o que ficou tinha %d", [(SKAnimals*)temp strenght], [(SKAnimals*)temp2 strenght]);
+                        break;
+                    }
+                    else{
+                        [temp removeFromParent];
+                        [self.animalArray removeObject:temp];
+                        NSLog(@"Foi removido o animal de forca %d e o que ficou tinha %d", [(SKAnimals*)temp strenght], [(SKAnimals*)temp2 strenght]);
+                        break;
+                    }
+                    
             }
         }
 
@@ -130,20 +189,20 @@ static const uint32_t animalCategory = 0x1 << 0;
     
 }
 
--(void)didBeginContact:(SKPhysicsContact *)contact{
-    
-    SKSpriteNode *firstNode, *secondNode;
-    
-    firstNode = (SKSpriteNode *)contact.bodyA.node;
-    secondNode = (SKSpriteNode *) contact.bodyB.node;
-    
-    if ((contact.bodyA.categoryBitMask == animalCategory)
-        && (contact.bodyB.categoryBitMask == animalCategory))
-    {
-            NSLog(@"aaaaaaaaaaaanimal collision!!!!");
-        firstNode.color = [UIColor redColor];
-    }
-    
-}
+//-(void)didBeginContact:(SKPhysicsContact *)contact{
+//    
+//    SKSpriteNode *firstNode, *secondNode;
+//    
+//    firstNode = (SKSpriteNode *)contact.bodyA.node;
+//    secondNode = (SKSpriteNode *) contact.bodyB.node;
+//    
+//    if ((contact.bodyA.categoryBitMask == animalCategory)
+//        && (contact.bodyB.categoryBitMask == animalCategory))
+//    {
+//            NSLog(@"aaaaaaaaaaaanimal collision!!!!");
+//        firstNode.color = [UIColor redColor];
+//    }
+//    
+//}
 
 @end
